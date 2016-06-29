@@ -1,0 +1,35 @@
+{
+  "project_info": {
+    "project_number": "1045459741559",
+    "project_id": "twittersyncadapter-cbb67"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1045459741559:android:5f4e3410d6ff4a9e",
+        "android_client_info": {
+          "package_name": "com.bignerdranch.android.initialtwittersyncadapter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCgwdS9NO3ecJsu2lLGA2nyIyu5MoGpeWY"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 1
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
