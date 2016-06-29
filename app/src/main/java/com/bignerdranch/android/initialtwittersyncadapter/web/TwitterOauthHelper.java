@@ -22,8 +22,8 @@ import javax.crypto.spec.SecretKeySpec;
 public class TwitterOauthHelper {
 
     private static final String TAG = "TwitterOauthHelper";
-    private static final String CONSUMER_KEY = "YOUR_CONSUMER_KEY";
-    private static final String CONSUMER_SECRET = "YOUR_CONSUMER_SECRET";
+    private static final String CONSUMER_KEY = "7DqPdv3btocSbixNIDVSjBOTS";
+    private static final String CONSUMER_SECRET = "Ho6E9xsOYLfSKm3hQZMXrYlA7y4CaHfr1iQH8neE2XSemv6EIA";
     private static final String KEY_SPEC = "HmacSHA1";
     private static final int MILLISECONDS_PER_SECOND = 1000;
 
