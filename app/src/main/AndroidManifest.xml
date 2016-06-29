@@ -23,6 +23,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".controller.AuthenticationActivity" />
+
         <service android:name=".account.AuthenticatorService">
             <intent-filter>
                 <action android:name="android.accounts.AccountAuthenticator" />
@@ -31,6 +32,11 @@
                 android:name="android.accounts.AccountAuthenticator"
                 android:resource="@xml/authenticator" />
         </service>
+        <provider
+            android:name=".contentprovider.TweetContentProvider"
+            android:authorities="com.bignerdranch.android.twittersyncadapter.provider"
+            android:exported="false"
+            android:syncable="true" />
     </application>
 
 </manifest>
