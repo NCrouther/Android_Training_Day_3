@@ -5,15 +5,14 @@ import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.accounts.AccountManagerCallback;
 import android.accounts.AccountManagerFuture;
-import android.accounts.AuthenticatorException;
-import android.accounts.OperationCanceledException;
+import android.content.ContentResolver;
+import android.database.ContentObserver;
 import android.database.Cursor;
-import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,12 +22,14 @@ import android.widget.TextView;
 import com.bignerdranch.android.initialtwittersyncadapter.R;
 import com.bignerdranch.android.initialtwittersyncadapter.account.Authenticator;
 import com.bignerdranch.android.initialtwittersyncadapter.contentprovider.DatabaseContract;
+import com.bignerdranch.android.initialtwittersyncadapter.contentprovider.TweetCursorWrapper;
+import com.bignerdranch.android.initialtwittersyncadapter.contentprovider.UserCursorWrapper;
 import com.bignerdranch.android.initialtwittersyncadapter.model.Tweet;
 import com.bignerdranch.android.initialtwittersyncadapter.model.User;
 import com.bumptech.glide.Glide;
 
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 
@@ -60,6 +61,13 @@ public class TweetListFragment extends Fragment {
         fetchAccessToken();
     }
 
+    @Override
+    public void onStop() {
+        super.onStop();
+        ContentResolver.removePeriodicSync(
+                mAccount, DatabaseContract.AUTHORITY, Bundle.EMPTY);
+    }
+
     private void fetchAccessToken() {
         AccountManager accountManager = AccountManager.get(getActivity());
         mAccount = new Account(Authenticator.ACCOUNT_NAME,
@@ -69,55 +77,63 @@ public class TweetListFragment extends Fragment {
                 new AccountManagerCallback<Bundle>() {
                     @Override
                     public void run(AccountManagerFuture<Bundle> future) {
-                        try {
-                            Bundle bundle = future.getResult();
-                            mAccessToken = bundle.getString(
-                                    AccountManager.KEY_AUTHTOKEN);
-                            Log.d(TAG, "Have access token: " + mAccessToken);
-                        } catch (AuthenticatorException |
-                                OperationCanceledException |
-                                IOException e) {
-                            Log.e(TAG, "Got an exception", e);
-                        }
+                        initRecyclerView();
+                        ContentResolver.setIsSyncable(
+                                mAccount, DatabaseContract.AUTHORITY, 1);
+                        ContentResolver.setSyncAutomatically(
+                                mAccount, DatabaseContract.AUTHORITY, true);
+                        ContentResolver.addPeriodicSync(
+                                mAccount, DatabaseContract.AUTHORITY, Bundle.EMPTY,
+                                30);
+                        getActivity().getContentResolver().registerContentObserver(
+                                DatabaseContract.Tweet.CONTENT_URI, true,
+                                mContentObserver);
                     }
                 }, null);
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        clearDb();
-        testInsert();
-        testQuery();
+    private void initRecyclerView() {
+        if (!isAdded()) {
+            return;
+        }
+        List<Tweet> tweetList = getTweetList();
+        mTweetAdapter.setTweetList(tweetList);
     }
 
-    private void clearDb() {
-        getActivity().getContentResolver()
-                .delete(DatabaseContract.User.CONTENT_URI, null, null);
-        getActivity().getContentResolver()
-                .delete(DatabaseContract.Tweet.CONTENT_URI, null, null);
-    }
-
-    private void testInsert() {
-        User user = new User("server_id", "My screen name", "my photo url");
-        Tweet tweet = new Tweet("server_id", "My first tweet", 0, 0, user);
-        Uri userUri = getActivity().getContentResolver()
-                .insert(DatabaseContract.User.CONTENT_URI, user.getContentValues());
-        Log.d(TAG, "Inserted user into uri: " + userUri);
-        Uri tweetUri = getActivity().getContentResolver()
-                .insert(DatabaseContract.Tweet.CONTENT_URI, tweet.getContentValues());
-        Log.d(TAG, "Inserted tweet into uri: " + tweetUri);
-    }
-
-    private void testQuery() {
-        Cursor userCursor = getActivity().getContentResolver()
-                .query(DatabaseContract.User.CONTENT_URI, null, null, null, null);
-        Log.d(TAG, "Have user cursor: " + userCursor);
+    private HashMap<String, User> getUserMap() {
+        Cursor userCursor = getActivity().getContentResolver().query(
+                DatabaseContract.User.CONTENT_URI, null, null, null, null);
+        UserCursorWrapper userCursorWrapper = new UserCursorWrapper(userCursor);
+        HashMap<String, User> userMap = new HashMap<>();
+        User user;
+        userCursorWrapper.moveToFirst();
+        while (!userCursorWrapper.isAfterLast()) {
+            user = userCursorWrapper.getUser();
+            userMap.put(user.getServerId(), user);
+            userCursorWrapper.moveToNext();
+        }
         userCursor.close();
-        Cursor tweetCursor = getActivity().getContentResolver()
-                .query(DatabaseContract.Tweet.CONTENT_URI, null, null, null, null);
-        Log.d(TAG, "Have tweet cursor: " + tweetCursor);
+        return userMap;
+    }
+
+    private List<Tweet> getTweetList() {
+        HashMap<String, User> userMap = getUserMap();
+        Cursor tweetCursor = getActivity().getContentResolver().query(
+                DatabaseContract.Tweet.CONTENT_URI, null, null, null, null);
+        TweetCursorWrapper tweetCursorWrapper = new TweetCursorWrapper(tweetCursor);
+        tweetCursorWrapper.moveToFirst();
+        Tweet tweet;
+        User tweetUser;
+        List<Tweet> tweetList = new ArrayList<>();
+        while (!tweetCursorWrapper.isAfterLast()) {
+            tweet = tweetCursorWrapper.getTweet();
+            tweetUser = userMap.get(tweet.getUserId());
+            tweet.setUser(tweetUser);
+            tweetList.add(tweet);
+            tweetCursorWrapper.moveToNext();
+        }
         tweetCursor.close();
+        return tweetList;
     }
 
 
@@ -176,4 +192,12 @@ public class TweetListFragment extends Fragment {
             }
         }
     }
+
+    private ContentObserver mContentObserver = new ContentObserver(new Handler()) {
+        @Override
+        public void onChange(boolean selfChange) {
+            super.onChange(selfChange);
+            initRecyclerView();
+        }
+    };
 }
