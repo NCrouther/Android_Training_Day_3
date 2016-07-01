@@ -18,8 +18,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.TextView;
 
 import com.bignerdranch.android.initialtwittersyncadapter.R;
 import com.bignerdranch.android.initialtwittersyncadapter.account.Authenticator;
@@ -29,7 +27,11 @@ import com.bignerdranch.android.initialtwittersyncadapter.contentprovider.UserCu
 import com.bignerdranch.android.initialtwittersyncadapter.model.PreferenceStore;
 import com.bignerdranch.android.initialtwittersyncadapter.model.Tweet;
 import com.bignerdranch.android.initialtwittersyncadapter.model.User;
+import com.bignerdranch.android.initialtwittersyncadapter.view.RowItemView;
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.drawable.GlideDrawable;
+import com.bumptech.glide.request.animation.GlideAnimation;
+import com.bumptech.glide.request.target.SimpleTarget;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
@@ -45,6 +47,7 @@ public class TweetListFragment extends Fragment {
 
     private static final String TAG = "TweetListFragment";
     private static final String SENDER_ID = "1045459741559";
+    private static final int PROFILE_PHOTO_SIZE = 64;
 
     private String mAccessToken;
     private Account mAccount;
@@ -212,8 +215,7 @@ public class TweetListFragment extends Fragment {
 
         @Override
         public TweetHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            LayoutInflater inflater = LayoutInflater.from(getActivity());
-            View view = inflater.inflate(R.layout.list_item_tweet, parent, false);
+            RowItemView view = new RowItemView(getActivity());
             return new TweetHolder(view);
         }
 
@@ -230,26 +232,25 @@ public class TweetListFragment extends Fragment {
     }
 
     private class TweetHolder extends RecyclerView.ViewHolder {
-        private ImageView mProfileImageView;
-        private TextView mTweetTextView;
-        private TextView mScreenNameTextView;
+        private RowItemView mRowItemView;
 
-        public TweetHolder(View itemView) {
+        public TweetHolder(RowItemView itemView) {
             super(itemView);
-            mProfileImageView = (ImageView) itemView
-                    .findViewById(R.id.list_item_tweet_user_profile_image);
-            mTweetTextView = (TextView) itemView
-                    .findViewById(R.id.list_item_tweet_tweet_text_view);
-            mScreenNameTextView = (TextView) itemView
-                    .findViewById(R.id.list_item_tweet_user_screen_name_text_view);
+            mRowItemView = itemView;
         }
 
         public void bindTweet(Tweet tweet) {
-            mTweetTextView.setText(tweet.getText());
+            mRowItemView.setTweet(tweet.getText());
             if (tweet.getUser() != null) {
-                mScreenNameTextView.setText(tweet.getUser().getScreenName());
+                mRowItemView.setUsername(tweet.getUser().getScreenName());
                 Glide.with(getActivity())
-                        .load(tweet.getUser().getPhotoUrl()).into(mProfileImageView);
+                        .load(tweet.getUser().getPhotoUrl()).into(new SimpleTarget<GlideDrawable>(
+                        PROFILE_PHOTO_SIZE, PROFILE_PHOTO_SIZE) {
+                    @Override
+                    public void onResourceReady(GlideDrawable drawable, GlideAnimation anim) {
+                        mRowItemView.setProfileImage(drawable);
+                    }
+                });
             }
         }
     }
